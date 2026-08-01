@@ -91,27 +91,36 @@ def _extract_entities(question: str) -> ExtractedEntities:
     elif any(w in q_lower for w in ["in progress", "in-progress", "active", "wip"]):
         ents.status_category = "in progress"
 
-    # Assignment: check user mappings first, then built-in patterns
-    assignment_keywords = ["unassigned", "not assigned", "nobody", "no one"]
-    for word in assignment_keywords:
-        if word in q_lower:
-            # Check if this exact word is a user-learned mapping
-            mapped_value = user_mappings.get(word)
+    # Assignment: detect negations first ("not a single", "none of", etc.)
+    negation_patterns = [
+        "not a single", "not any", "not one", "none of", "no members",
+        "no one", "nobody", "not assigned", "unassigned"
+    ]
+    for pattern in negation_patterns:
+        if pattern in q_lower:
+            mapped_value = user_mappings.get(pattern)
             if mapped_value == "unassigned":
                 ents.assignment = "unassigned"
                 break
-            elif word in ["not assigned", "nobody", "no one"] and word not in ["unassigned"]:
+            elif pattern not in ["unassigned"]:
                 # Ambiguous term: ask user for confirmation
-                if ask_user_confirmation(word, "unassigned"):
+                if ask_user_confirmation(pattern, "unassigned"):
                     ents.assignment = "unassigned"
-                    store_term_mapping(word, "unassigned")
+                    store_term_mapping(pattern, "unassigned")
                 break
             else:
                 ents.assignment = "unassigned"
                 break
 
+    # If no negation found but "assigned" appears, ask for clarification
     if not ents.assignment and ("assigned" in q_lower or "assignee" in q_lower):
-        ents.assignment = "assigned"
+        if "not" in q_lower or "no" in q_lower or "none" in q_lower:
+            # Likely asking for unassigned but in a complex way
+            if ask_user_confirmation("assigned (with negation)", "unassigned"):
+                ents.assignment = "unassigned"
+                store_term_mapping("assigned with negation", "unassigned")
+        else:
+            ents.assignment = "assigned"
 
     # Priority
     for prio in ["highest", "high", "medium", "low", "lowest"]:
