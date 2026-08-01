@@ -82,7 +82,7 @@ def _extract_entities(question: str) -> ExtractedEntities:
         ents.status_category = "in progress"
 
     # Assignment
-    if "unassigned" in q_lower:
+    if any(w in q_lower for w in ["unassigned", "not assigned", "nobody", "no one"]):
         ents.assignment = "unassigned"
     elif "assigned" in q_lower or "assignee" in q_lower:
         ents.assignment = "assigned"
@@ -157,18 +157,19 @@ def _build_unassigned_query(ents: ExtractedEntities) -> str:
             type_name = "Subtask"
         type_clause = f"a pm:{type_name} ;\n         "
 
-    status_filter = ""
+    status_lines = ""
     if ents.status_category == "open":
-        status_filter = """; pm:hasStatus ?s .
-  ?s pm:inStatusCategory ?cat .
-  ?cat pm:name ?catName .
+        status_lines = """;
+         pm:hasStatus ?s .
+  ?s pm:inStatusCategory ?cat ;
+     pm:name ?catName .
   FILTER (?catName != "Done")"""
 
     return f"""{PREFIXES}
 
 SELECT ?key ?summary WHERE {{
   ?issue {type_clause}pm:issueKey ?key ;
-         pm:summary ?summary {status_filter} .
+         pm:summary ?summary{status_lines} .
   FILTER NOT EXISTS {{ ?issue pm:assignee ?u }}
 }}"""
 
