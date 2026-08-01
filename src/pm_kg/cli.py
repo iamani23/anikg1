@@ -59,15 +59,53 @@ def cmd_query(args: argparse.Namespace) -> int:
 
 
 def cmd_ask(args: argparse.Namespace) -> int:
-    # Imported here so `query`/`schema` work without the anthropic package.
-    from .pipeline import ask
+    from .graph.store import default_store
+    from .nl2sparql.generator import generate_sparql
+    from .nl2sparql.query_learner import (
+        ask_confirm_interpretation,
+        confirm_learned_intent,
+        get_user_explanation,
+        learn_from_no,
+        store_learned_intent,
+        store_learned_query,
+    )
 
-    result = ask(args.question)
-    print("Generated SPARQL:\n")
-    print(result.sparql)
-    print("\nResult:\n")
-    _print_rows(result.rows)
-    return 0
+    question = args.question
+    store = default_store()
+
+    # Step 1: Generate SPARQL
+    sparql = generate_sparql(question)
+
+    # Step 2: Ask for confirmation with SPARQL shown
+    if ask_confirm_interpretation(question, sparql):
+        # User confirmed: store the pattern and run the query
+        store_learned_query(question, "confirmed by user", sparql)
+        print("\n✓ Learned this pattern!\n")
+        rows = store.query(sparql)
+        print("Result:\n")
+        _print_rows(rows)
+        return 0
+
+    # Step 3: User said no – ask for their actual intent
+    user_explanation = get_user_explanation()
+
+    # Step 4: Parse user's intent using NLP
+    intent, summary = learn_from_no(question, user_explanation)
+
+    # Step 5: Confirm our understanding
+    if confirm_learned_intent(summary):
+        store_learned_intent(question, intent)
+        print("✓ Learned your intent! I'll remember this pattern.\n")
+        # Regenerate SPARQL based on learned intent
+        sparql = generate_sparql(question)
+        rows = store.query(sparql)
+        print("Result:\n")
+        _print_rows(rows)
+        return 0
+    else:
+        print("\n❌ Sorry, I'm still not understanding correctly.")
+        print("Could you rephrase your question more simply?")
+        return 1
 
 
 def cmd_schema(_: argparse.Namespace) -> int:
