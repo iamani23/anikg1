@@ -2,6 +2,9 @@
 
 No LLM or API calls. Instead: entity recognition (issue keys, user names, statuses)
 + pattern matching against known question types, with fallback SPARQL templates.
+
+Learns from user feedback: when unsure about a term, asks the user and stores
+the mapping in the RDF graph for future use.
 """
 
 from __future__ import annotations
@@ -11,6 +14,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import spacy
+
+from .user_mappings import ask_user_confirmation, load_term_mappings, store_term_mapping
 
 # Load spaCy's pretrained English model (small version, ~40 MB).
 # On first import, if not installed, download with: python -m spacy download en_core_web_sm
@@ -55,11 +60,16 @@ class ExtractedEntities:
 
 
 def _extract_entities(question: str) -> ExtractedEntities:
-    """Use regex + spaCy to recognize PM-specific entities."""
+    """Use regex + spaCy to recognize PM-specific entities.
+
+    Learns from user feedback: if unsure about a term, asks the user and
+    stores the mapping for future queries.
+    """
     _ensure_model_loaded()
 
     q_lower = question.lower()
     ents = ExtractedEntities(raw_question=question)
+    user_mappings = load_term_mappings()
 
     # Issue type
     for typ in ["bug", "story", "task", "epic", "subtask"]:
@@ -81,10 +91,26 @@ def _extract_entities(question: str) -> ExtractedEntities:
     elif any(w in q_lower for w in ["in progress", "in-progress", "active", "wip"]):
         ents.status_category = "in progress"
 
-    # Assignment
-    if any(w in q_lower for w in ["unassigned", "not assigned", "nobody", "no one"]):
-        ents.assignment = "unassigned"
-    elif "assigned" in q_lower or "assignee" in q_lower:
+    # Assignment: check user mappings first, then built-in patterns
+    assignment_keywords = ["unassigned", "not assigned", "nobody", "no one"]
+    for word in assignment_keywords:
+        if word in q_lower:
+            # Check if this exact word is a user-learned mapping
+            mapped_value = user_mappings.get(word)
+            if mapped_value == "unassigned":
+                ents.assignment = "unassigned"
+                break
+            elif word in ["not assigned", "nobody", "no one"] and word not in ["unassigned"]:
+                # Ambiguous term: ask user for confirmation
+                if ask_user_confirmation(word, "unassigned"):
+                    ents.assignment = "unassigned"
+                    store_term_mapping(word, "unassigned")
+                break
+            else:
+                ents.assignment = "unassigned"
+                break
+
+    if not ents.assignment and ("assigned" in q_lower or "assignee" in q_lower):
         ents.assignment = "assigned"
 
     # Priority
