@@ -14,12 +14,22 @@ import spacy
 
 # Load spaCy's pretrained English model (small version, ~40 MB).
 # On first import, if not installed, download with: python -m spacy download en_core_web_sm
+NLP = None
 try:
     NLP = spacy.load("en_core_web_sm")
 except OSError:
+    pass  # Lazy load on first use with a clear error message
+
+
+def _ensure_model_loaded() -> None:
+    """Ensure spaCy model is loaded; raise clear error if not."""
+    global NLP
+    if NLP is not None:
+        return
     raise RuntimeError(
-        "spaCy model 'en_core_web_sm' not found. Install with:\n"
-        "  python -m spacy download en_core_web_sm"
+        "spaCy model 'en_core_web_sm' not found. Download it with:\n"
+        "  python -m spacy download en_core_web_sm\n"
+        "If spacy is not installed, run: pip install -e ."
     )
 
 PREFIXES = """PREFIX pm:   <https://w3id.org/pmkg/ontology#>
@@ -46,6 +56,8 @@ class ExtractedEntities:
 
 def _extract_entities(question: str) -> ExtractedEntities:
     """Use regex + spaCy to recognize PM-specific entities."""
+    _ensure_model_loaded()
+
     q_lower = question.lower()
     ents = ExtractedEntities(raw_question=question)
 
