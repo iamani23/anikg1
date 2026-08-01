@@ -1,13 +1,14 @@
 # PM Knowledge Graph — Ask your project-management tools in plain English
 
 An **RDF knowledge graph + ontology** for project-management tools (JIRA first,
-others later), queried in natural language. You ask a question; an **LLM
-translates it into SPARQL** against a shared ontology; the query runs over the
-graph and returns a grounded, verifiable answer.
+others later), queried in natural language. You ask a question; **open-source
+NLP + semantic parsing translates it into SPARQL** against a shared ontology;
+the query runs over the graph and returns a grounded, verifiable answer.
 
-> Status: **early scaffold / step 1**. The ontology, the SPARQL layer, and the
-> NL→SPARQL prompt pipeline work today on the bundled sample data. The live
-> JIRA connector is stubbed and clearly marked `TODO`.
+> Status: **step 1, open-source NLP edition**. The ontology, the SPARQL layer,
+> and the NL→SPARQL semantic parser (spaCy + rule-based) work today on bundled
+> sample data. No LLM or API calls. The live JIRA connector is stubbed and
+> clearly marked `TODO`.
 
 ---
 
@@ -17,12 +18,11 @@ graph and returns a grounded, verifiable answer.
   same ideas (project, issue, sprint, assignee, status) with different names.
   One ontology maps them all to the same concepts, so a single question works
   across tools.
-- **LLMs generate better SPARQL when handed a schema.** The ontology *is* the
-  schema. We feed its classes, properties, and comments into the prompt, which
-  dramatically reduces hallucinated queries versus free-form SQL over an unknown
-  table layout.
+- **Semantic parsing is deterministic.** The NL→SPARQL layer uses spaCy for
+  entity recognition + rule-based pattern matching. No model hallucinations, no
+  API costs, fully offline, and entirely auditable.
 - **Answers are verifiable.** Every answer traces back to a SPARQL query you can
-  read, re-run, and audit — not an opaque model guess.
+  read, re-run, and audit — not an opaque LLM guess.
 - **Reasoning & links.** RDF lets you follow `blocks` / `isBlockedBy` /
   `epicLink` chains and, later, run OWL inference (e.g. "everything blocking a
   Done epic").
@@ -30,39 +30,40 @@ graph and returns a grounded, verifiable answer.
 ## How it works
 
 ```
-                    ┌──────────────┐
-  "Which bugs are   │   LLM (Claude)│  ← ontology schema is injected here
-   still open in    │  NL → SPARQL  │
-   the Payments     └──────┬───────┘
-   epic?"                  │  SPARQL
-        ▲                  ▼
-        │            ┌───────────┐      ┌──────────────────────┐
-   answer in         │ Triplestore│◄────│ JIRA / Asana / … ETL │
-   plain English  ◄──│  (RDF KG)  │     │  maps records → RDF   │
-                     └───────────┘      └──────────────────────┘
+                  ┌─────────────────────┐
+  "Which bugs are │  NLP Semantic Parser │  ← entity recognition + rule patterns
+   still open in  │  (spaCy + rules)    │
+   the Payments   │  NL → SPARQL        │
+   project?"      └──────────┬──────────┘
+        ▲                    │  SPARQL
+        │                    ▼
+        │            ┌───────────────┐      ┌──────────────────────┐
+   answer rows   ◄──│ Triplestore   │◄────│ JIRA / Asana / … ETL │
+   + SPARQL query   │  (RDF KG)     │     │  maps records → RDF   │
+                    └───────────────┘      └──────────────────────┘
 ```
 
-1. **Ingest** — pull records from JIRA's REST API.
+1. **Ingest** — pull records from JIRA's REST API (step 2).
 2. **Map** — convert each record to RDF triples using the [`pm:` ontology](ontology/pm.ttl).
-3. **Store** — load triples into a triplestore (rdflib file store now; Fuseki/GraphDB later).
-4. **Translate** — an LLM turns the user's question into SPARQL, prompted with the ontology.
-5. **Execute & answer** — run the SPARQL, then (optionally) verbalize the result set.
+3. **Store** — load triples into a triplestore (rdflib in-memory now; Fuseki/GraphDB later).
+4. **Translate** — spaCy + rules turn the user's question into SPARQL (no LLM, no API calls).
+5. **Execute & answer** — run the SPARQL and return result rows.
 
-## Quick start (works on sample data, no JIRA needed)
+## Quick start (works on sample data, no JIRA or API keys needed)
 
 ```bash
 pip install -e .
+python -m spacy download en_core_web_sm  # one-time: download spaCy model
 
 # Run a raw SPARQL query against the ontology + sample data
 pm-kg query --sparql examples/queries.sparql --select 1
 
-# Ask a natural-language question (needs ANTHROPIC_API_KEY)
-export ANTHROPIC_API_KEY=sk-...
+# Ask a natural-language question (fully offline, no API keys needed!)
 pm-kg ask "Which open bugs in the Payments project are unassigned?"
 ```
 
-`pm-kg ask` prints the generated SPARQL *and* the result, so you can see exactly
-what the model asked the graph.
+`pm-kg ask` prints the generated SPARQL *and* the result rows, so you can see
+exactly what the semantic parser extracted and how it queried the graph.
 
 ## Repository layout
 
@@ -70,13 +71,15 @@ what the model asked the graph.
 ontology/            The pm: ontology (Turtle) + docs — the heart of the project
 data/sample/         Small hand-written RDF dataset for demos & tests
 src/pm_kg/
-  config.py          Settings (model, JIRA creds, store path)
+  config.py          Settings (JIRA creds, store path, data files)
   graph/store.py     Load ontology + data, run SPARQL (rdflib)
   ingestion/         JIRA client (stub) + JIRA-JSON → RDF mapper
-  nl2sparql/         Prompt builder (injects ontology) + LLM generator
+  nl2sparql/
+    semantic_parser.py Entity extraction + rule-based SPARQL generation
+    prompt.py         Ontology schema summary (for future LLM bridge)
   pipeline.py        Ties ask → generate → execute → answer together
   cli.py             `pm-kg` command
-examples/            Sample NL questions and their SPARQL
+examples/            Sample NL questions and expected SPARQL
 docs/architecture.md Deeper design notes and roadmap
 ```
 

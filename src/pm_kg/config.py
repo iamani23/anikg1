@@ -17,14 +17,6 @@ SAMPLE_DATA_PATH = ROOT / "data" / "sample" / "sample_data.ttl"
 class Settings:
     """Runtime settings for the pipeline."""
 
-    # --- LLM ---
-    anthropic_api_key: str | None = field(
-        default_factory=lambda: os.getenv("ANTHROPIC_API_KEY")
-    )
-    # Default to a current Claude model; override with PMKG_MODEL.
-    model: str = field(default_factory=lambda: os.getenv("PMKG_MODEL", "claude-sonnet-5"))
-    max_tokens: int = 1500
-
     # --- Graph store ---
     ontology_path: Path = ONTOLOGY_PATH
     # Comma-separated list of data files to load, or the sample by default.
