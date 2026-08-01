@@ -1,0 +1,141 @@
+@prefix pm:  <https://w3id.org/pmkg/ontology#> .
+@prefix ex:  <https://w3id.org/pmkg/data/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+#  Small hand-written sample dataset for the "Payments" project.
+#  Lets you run SPARQL and NL questions without a live JIRA.
+#################################################################
+
+# --- Controlled vocabularies -------------------------------------------------
+
+pm:cat_todo        a pm:StatusCategory ; pm:name "To Do" .
+pm:cat_inprogress  a pm:StatusCategory ; pm:name "In Progress" .
+pm:cat_done        a pm:StatusCategory ; pm:name "Done" .
+
+ex:status_todo        a pm:Status ; pm:name "To Do"        ; pm:inStatusCategory pm:cat_todo .
+ex:status_inprogress  a pm:Status ; pm:name "In Progress"  ; pm:inStatusCategory pm:cat_inprogress .
+ex:status_inreview    a pm:Status ; pm:name "In Review"    ; pm:inStatusCategory pm:cat_inprogress .
+ex:status_done        a pm:Status ; pm:name "Done"         ; pm:inStatusCategory pm:cat_done .
+
+ex:prio_highest a pm:Priority ; pm:name "Highest" ; pm:priorityRank 1 .
+ex:prio_high    a pm:Priority ; pm:name "High"    ; pm:priorityRank 2 .
+ex:prio_medium  a pm:Priority ; pm:name "Medium"  ; pm:priorityRank 3 .
+ex:prio_low     a pm:Priority ; pm:name "Low"     ; pm:priorityRank 4 .
+
+ex:type_epic    a pm:IssueType ; pm:name "Epic" .
+ex:type_story   a pm:IssueType ; pm:name "Story" .
+ex:type_task    a pm:IssueType ; pm:name "Task" .
+ex:type_bug     a pm:IssueType ; pm:name "Bug" .
+
+# --- People ------------------------------------------------------------------
+
+ex:user_alice a pm:User ; pm:displayName "Alice Chen"   ; pm:accountId "u-alice" .
+ex:user_bob   a pm:User ; pm:displayName "Bob Ndlovu"   ; pm:accountId "u-bob" .
+ex:user_carol a pm:User ; pm:displayName "Carol Diaz"   ; pm:accountId "u-carol" .
+
+# --- Project, board, sprints -------------------------------------------------
+
+ex:proj_pay a pm:Project ;
+    pm:projectKey "PAY" ;
+    pm:name "Payments" .
+
+ex:board_pay a pm:Board ; pm:name "Payments Board" .
+
+ex:sprint_23 a pm:Sprint ;
+    pm:name "Sprint 23" ;
+    pm:sprintState "closed" ;
+    pm:onBoard ex:board_pay ;
+    pm:startDate "2026-06-01T09:00:00"^^xsd:dateTime ;
+    pm:endDate   "2026-06-14T17:00:00"^^xsd:dateTime .
+
+ex:sprint_24 a pm:Sprint ;
+    pm:name "Sprint 24" ;
+    pm:sprintState "active" ;
+    pm:onBoard ex:board_pay ;
+    pm:startDate "2026-06-15T09:00:00"^^xsd:dateTime ;
+    pm:endDate   "2026-06-28T17:00:00"^^xsd:dateTime .
+
+# --- Epic --------------------------------------------------------------------
+
+ex:PAY-1 a pm:Epic ;
+    pm:issueKey "PAY-1" ;
+    pm:summary "Card payments checkout" ;
+    pm:belongsToProject ex:proj_pay ;
+    pm:hasIssueType ex:type_epic ;
+    pm:hasStatus ex:status_inprogress ;
+    pm:hasPriority ex:prio_high ;
+    pm:reporter ex:user_alice ;
+    pm:created "2026-05-20T10:00:00"^^xsd:dateTime .
+
+# --- Issues ------------------------------------------------------------------
+
+ex:PAY-12 a pm:Story ;
+    pm:issueKey "PAY-12" ;
+    pm:summary "Add Apple Pay option to checkout" ;
+    pm:belongsToProject ex:proj_pay ;
+    pm:hasIssueType ex:type_story ;
+    pm:hasStatus ex:status_done ;
+    pm:hasPriority ex:prio_high ;
+    pm:epicLink ex:PAY-1 ;
+    pm:assignee ex:user_alice ;
+    pm:reporter ex:user_bob ;
+    pm:inSprint ex:sprint_23 ;
+    pm:storyPoints 5 ;
+    pm:created  "2026-05-25T11:00:00"^^xsd:dateTime ;
+    pm:resolved "2026-06-12T14:00:00"^^xsd:dateTime .
+
+ex:PAY-15 a pm:Bug ;
+    pm:issueKey "PAY-15" ;
+    pm:summary "Checkout total rounds incorrectly for JPY" ;
+    pm:belongsToProject ex:proj_pay ;
+    pm:hasIssueType ex:type_bug ;
+    pm:hasStatus ex:status_inprogress ;
+    pm:hasPriority ex:prio_highest ;
+    pm:epicLink ex:PAY-1 ;
+    pm:assignee ex:user_bob ;
+    pm:reporter ex:user_carol ;
+    pm:inSprint ex:sprint_24 ;
+    pm:storyPoints 3 ;
+    pm:created "2026-06-16T09:30:00"^^xsd:dateTime .
+
+ex:PAY-18 a pm:Bug ;
+    pm:issueKey "PAY-18" ;
+    pm:summary "Refund button disabled after partial refund" ;
+    pm:belongsToProject ex:proj_pay ;
+    pm:hasIssueType ex:type_bug ;
+    pm:hasStatus ex:status_todo ;
+    pm:hasPriority ex:prio_high ;
+    pm:epicLink ex:PAY-1 ;
+    pm:reporter ex:user_carol ;
+    pm:inSprint ex:sprint_24 ;
+    pm:storyPoints 2 ;
+    pm:created "2026-06-18T13:15:00"^^xsd:dateTime .
+
+ex:PAY-20 a pm:Task ;
+    pm:issueKey "PAY-20" ;
+    pm:summary "Rotate payment gateway API keys" ;
+    pm:belongsToProject ex:proj_pay ;
+    pm:hasIssueType ex:type_task ;
+    pm:hasStatus ex:status_inreview ;
+    pm:hasPriority ex:prio_medium ;
+    pm:assignee ex:user_carol ;
+    pm:reporter ex:user_alice ;
+    pm:inSprint ex:sprint_24 ;
+    pm:storyPoints 1 ;
+    pm:isBlockedBy ex:PAY-15 ;
+    pm:created "2026-06-17T08:00:00"^^xsd:dateTime .
+
+ex:PAY-22 a pm:Story ;
+    pm:issueKey "PAY-22" ;
+    pm:summary "Support saved cards for returning users" ;
+    pm:belongsToProject ex:proj_pay ;
+    pm:hasIssueType ex:type_story ;
+    pm:hasStatus ex:status_todo ;
+    pm:hasPriority ex:prio_medium ;
+    pm:epicLink ex:PAY-1 ;
+    pm:reporter ex:user_alice ;
+    pm:inSprint ex:sprint_24 ;
+    pm:storyPoints 8 ;
+    pm:created "2026-06-19T10:45:00"^^xsd:dateTime .

@@ -1,0 +1,297 @@
+@prefix pm:      <https://w3id.org/pmkg/ontology#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix foaf:    <http://xmlns.com/foaf/0.1/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+#################################################################
+#  Project Management Knowledge Graph Ontology (pm:)
+#
+#  A tool-agnostic vocabulary for project-management data such as
+#  JIRA, Asana, Linear and GitHub Issues. Concepts map to the shared
+#  ideas these tools have in common so a single question works across
+#  sources. rdfs:label / rdfs:comment are written to double as the
+#  schema description fed to the LLM when generating SPARQL.
+#################################################################
+
+<https://w3id.org/pmkg/ontology> a owl:Ontology ;
+    dcterms:title "Project Management Knowledge Graph Ontology" ;
+    rdfs:comment "A tool-agnostic RDF ontology for querying project-management systems via SPARQL." ;
+    owl:versionInfo "0.1.0" .
+
+#################################################################
+#  Classes
+#################################################################
+
+pm:Project a owl:Class ;
+    rdfs:label "Project" ;
+    rdfs:comment "A container for work, e.g. a JIRA project. Has a short key like 'PAY' and a name." .
+
+pm:Issue a owl:Class ;
+    rdfs:label "Issue" ;
+    rdfs:comment "A unit of work: a story, task, bug, epic or sub-task. Identified by a key like 'PAY-123'." .
+
+pm:Epic a owl:Class ;
+    rdfs:subClassOf pm:Issue ;
+    rdfs:label "Epic" ;
+    rdfs:comment "A large body of work that groups related issues via pm:epicLink." .
+
+pm:Story a owl:Class ;
+    rdfs:subClassOf pm:Issue ;
+    rdfs:label "Story" ;
+    rdfs:comment "A user story: a feature described from an end-user perspective." .
+
+pm:Task a owl:Class ;
+    rdfs:subClassOf pm:Issue ;
+    rdfs:label "Task" ;
+    rdfs:comment "A generic piece of work that is not a story or bug." .
+
+pm:Bug a owl:Class ;
+    rdfs:subClassOf pm:Issue ;
+    rdfs:label "Bug" ;
+    rdfs:comment "A defect or problem in the product." .
+
+pm:Subtask a owl:Class ;
+    rdfs:subClassOf pm:Issue ;
+    rdfs:label "Sub-task" ;
+    rdfs:comment "A child issue that breaks down a parent issue via pm:parent." .
+
+pm:Sprint a owl:Class ;
+    rdfs:label "Sprint" ;
+    rdfs:comment "A time-boxed iteration containing issues. Has a state: future, active or closed." .
+
+pm:Board a owl:Class ;
+    rdfs:label "Board" ;
+    rdfs:comment "An agile board (scrum or kanban) belonging to a project." .
+
+pm:Component a owl:Class ;
+    rdfs:label "Component" ;
+    rdfs:comment "A sub-section of a project used to group issues, e.g. 'API' or 'Billing'." .
+
+pm:Version a owl:Class ;
+    rdfs:label "Version" ;
+    rdfs:comment "A release / fix version of a project, e.g. '2.1.0'." .
+
+pm:IssueType a owl:Class ;
+    rdfs:label "Issue Type" ;
+    rdfs:comment "The type of an issue (Story, Bug, Task, Epic, Sub-task) as a controlled value." .
+
+pm:Status a owl:Class ;
+    rdfs:label "Status" ;
+    rdfs:comment "The workflow status of an issue, e.g. 'To Do', 'In Progress', 'Done'." .
+
+pm:StatusCategory a owl:Class ;
+    rdfs:label "Status Category" ;
+    rdfs:comment "The coarse bucket a status falls into: To Do, In Progress, or Done. Use this for 'open' vs 'done' questions." .
+
+pm:Priority a owl:Class ;
+    rdfs:label "Priority" ;
+    rdfs:comment "The priority of an issue, e.g. 'Highest', 'High', 'Medium', 'Low'." .
+
+pm:User a owl:Class ;
+    rdfs:subClassOf foaf:Agent ;
+    rdfs:label "User" ;
+    rdfs:comment "A person who reports, is assigned to, or comments on issues." .
+
+pm:Comment a owl:Class ;
+    rdfs:label "Comment" ;
+    rdfs:comment "A comment made by a user on an issue." .
+
+pm:Worklog a owl:Class ;
+    rdfs:label "Worklog" ;
+    rdfs:comment "A record of time a user spent working on an issue." .
+
+pm:Label a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Label" ;
+    rdfs:comment "A free-text tag applied to issues." .
+
+#################################################################
+#  Object Properties (relationships)
+#################################################################
+
+pm:belongsToProject a owl:ObjectProperty ;
+    rdfs:label "belongs to project" ;
+    rdfs:comment "Links an issue to the project it belongs to." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Project .
+
+pm:hasIssueType a owl:ObjectProperty ;
+    rdfs:label "has issue type" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:IssueType .
+
+pm:hasStatus a owl:ObjectProperty ;
+    rdfs:label "has status" ;
+    rdfs:comment "The current workflow status of the issue." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Status .
+
+pm:inStatusCategory a owl:ObjectProperty ;
+    rdfs:label "in status category" ;
+    rdfs:comment "Links a status to its coarse category (To Do / In Progress / Done)." ;
+    rdfs:domain pm:Status ; rdfs:range pm:StatusCategory .
+
+pm:hasPriority a owl:ObjectProperty ;
+    rdfs:label "has priority" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Priority .
+
+pm:assignee a owl:ObjectProperty ;
+    rdfs:label "assignee" ;
+    rdfs:comment "The user currently assigned to the issue. Absent means unassigned." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:User .
+
+pm:reporter a owl:ObjectProperty ;
+    rdfs:label "reporter" ;
+    rdfs:comment "The user who created / reported the issue." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:User .
+
+pm:inSprint a owl:ObjectProperty ;
+    rdfs:label "in sprint" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Sprint .
+
+pm:hasComponent a owl:ObjectProperty ;
+    rdfs:label "has component" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Component .
+
+pm:fixVersion a owl:ObjectProperty ;
+    rdfs:label "fix version" ;
+    rdfs:comment "The release version in which the issue is fixed / delivered." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Version .
+
+pm:parent a owl:ObjectProperty ;
+    rdfs:label "parent" ;
+    rdfs:comment "The parent issue of a sub-task." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Issue .
+
+pm:epicLink a owl:ObjectProperty ;
+    rdfs:label "epic link" ;
+    rdfs:comment "Links an issue to the epic that groups it." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Epic .
+
+pm:blocks a owl:ObjectProperty ;
+    rdfs:label "blocks" ;
+    rdfs:comment "This issue blocks the referenced issue." ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Issue ;
+    owl:inverseOf pm:isBlockedBy .
+
+pm:isBlockedBy a owl:ObjectProperty ;
+    rdfs:label "is blocked by" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Issue .
+
+pm:relatesTo a owl:ObjectProperty ;
+    rdfs:label "relates to" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Issue .
+
+pm:duplicates a owl:ObjectProperty ;
+    rdfs:label "duplicates" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Issue .
+
+pm:hasComment a owl:ObjectProperty ;
+    rdfs:label "has comment" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Comment .
+
+pm:hasWorklog a owl:ObjectProperty ;
+    rdfs:label "has worklog" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Worklog .
+
+pm:hasLabel a owl:ObjectProperty ;
+    rdfs:label "has label" ;
+    rdfs:domain pm:Issue ; rdfs:range pm:Label .
+
+pm:author a owl:ObjectProperty ;
+    rdfs:label "author" ;
+    rdfs:comment "The user who authored a comment or logged work." ;
+    rdfs:range pm:User .
+
+pm:onBoard a owl:ObjectProperty ;
+    rdfs:label "on board" ;
+    rdfs:domain pm:Sprint ; rdfs:range pm:Board .
+
+#################################################################
+#  Datatype Properties (literals)
+#################################################################
+
+pm:issueKey a owl:DatatypeProperty ;
+    rdfs:label "issue key" ;
+    rdfs:comment "Human-readable issue identifier, e.g. 'PAY-123'." ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:string .
+
+pm:summary a owl:DatatypeProperty ;
+    rdfs:label "summary" ;
+    rdfs:comment "Short title of the issue." ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:string .
+
+pm:description a owl:DatatypeProperty ;
+    rdfs:label "description" ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:string .
+
+pm:storyPoints a owl:DatatypeProperty ;
+    rdfs:label "story points" ;
+    rdfs:comment "Estimated effort in story points." ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:decimal .
+
+pm:created a owl:DatatypeProperty ;
+    rdfs:label "created" ;
+    rdfs:comment "Timestamp the issue was created." ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:dateTime .
+
+pm:updated a owl:DatatypeProperty ;
+    rdfs:label "updated" ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:dateTime .
+
+pm:resolved a owl:DatatypeProperty ;
+    rdfs:label "resolved" ;
+    rdfs:comment "Timestamp the issue was resolved / closed. Absent means still open." ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:dateTime .
+
+pm:dueDate a owl:DatatypeProperty ;
+    rdfs:label "due date" ;
+    rdfs:domain pm:Issue ; rdfs:range xsd:date .
+
+pm:projectKey a owl:DatatypeProperty ;
+    rdfs:label "project key" ;
+    rdfs:comment "Short project code, e.g. 'PAY'." ;
+    rdfs:domain pm:Project ; rdfs:range xsd:string .
+
+pm:name a owl:DatatypeProperty ;
+    rdfs:label "name" ;
+    rdfs:comment "Display name of a project, sprint, component, status, etc." ;
+    rdfs:range xsd:string .
+
+pm:sprintState a owl:DatatypeProperty ;
+    rdfs:label "sprint state" ;
+    rdfs:comment "One of 'future', 'active', 'closed'." ;
+    rdfs:domain pm:Sprint ; rdfs:range xsd:string .
+
+pm:startDate a owl:DatatypeProperty ;
+    rdfs:label "start date" ;
+    rdfs:domain pm:Sprint ; rdfs:range xsd:dateTime .
+
+pm:endDate a owl:DatatypeProperty ;
+    rdfs:label "end date" ;
+    rdfs:domain pm:Sprint ; rdfs:range xsd:dateTime .
+
+pm:priorityRank a owl:DatatypeProperty ;
+    rdfs:label "priority rank" ;
+    rdfs:comment "Numeric rank of a priority; lower is more urgent (1 = Highest)." ;
+    rdfs:domain pm:Priority ; rdfs:range xsd:integer .
+
+pm:timeSpentSeconds a owl:DatatypeProperty ;
+    rdfs:label "time spent (seconds)" ;
+    rdfs:domain pm:Worklog ; rdfs:range xsd:integer .
+
+pm:body a owl:DatatypeProperty ;
+    rdfs:label "body" ;
+    rdfs:comment "Text body of a comment." ;
+    rdfs:domain pm:Comment ; rdfs:range xsd:string .
+
+pm:displayName a owl:DatatypeProperty ;
+    rdfs:label "display name" ;
+    rdfs:comment "Full display name of a user." ;
+    rdfs:domain pm:User ; rdfs:range xsd:string .
+
+pm:accountId a owl:DatatypeProperty ;
+    rdfs:label "account id" ;
+    rdfs:comment "Stable account identifier of a user in the source tool." ;
+    rdfs:domain pm:User ; rdfs:range xsd:string .

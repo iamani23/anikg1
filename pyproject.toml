@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pm-kg"
+version = "0.1.0"
+description = "RDF knowledge graph + ontology for querying project-management tools via LLM-generated SPARQL"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "iamani23" }]
+dependencies = [
+    "rdflib>=7.0",
+]
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.40"]
+jira = ["requests>=2.31"]
+dev = ["pytest>=8.0", "anthropic>=0.40", "requests>=2.31"]
+
+[project.scripts]
+pm-kg = "pm_kg.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

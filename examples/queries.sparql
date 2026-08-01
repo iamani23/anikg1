@@ -1,0 +1,77 @@
+# Sample SPARQL queries against the pm: ontology + sample data.
+# Queries are separated by a line containing only '---'.
+# Run one with: pm-kg query --sparql examples/queries.sparql --select N
+
+PREFIX pm:  <https://w3id.org/pmkg/ontology#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+# 1. All open (not Done) issues in the Payments project, with their status
+SELECT ?key ?summary ?status WHERE {
+  ?issue pm:belongsToProject ?proj .
+  ?proj  pm:projectKey "PAY" .
+  ?issue pm:issueKey ?key ;
+         pm:summary  ?summary ;
+         pm:hasStatus ?s .
+  ?s pm:name ?status ;
+     pm:inStatusCategory ?cat .
+  ?cat pm:name ?catName .
+  FILTER (?catName != "Done")
+}
+ORDER BY ?key
+
+---
+
+PREFIX pm: <https://w3id.org/pmkg/ontology#>
+
+# 2. Open bugs that are unassigned
+SELECT ?key ?summary WHERE {
+  ?issue a pm:Bug ;
+         pm:issueKey ?key ;
+         pm:summary ?summary ;
+         pm:hasStatus ?s .
+  ?s pm:inStatusCategory ?cat .
+  ?cat pm:name ?catName .
+  FILTER (?catName != "Done")
+  FILTER NOT EXISTS { ?issue pm:assignee ?anyone }
+}
+
+---
+
+PREFIX pm: <https://w3id.org/pmkg/ontology#>
+
+# 3. Total story points per assignee in the active sprint
+SELECT ?assignee (SUM(?pts) AS ?points) WHERE {
+  ?sprint pm:sprintState "active" .
+  ?issue pm:inSprint ?sprint ;
+         pm:storyPoints ?pts ;
+         pm:assignee ?user .
+  ?user pm:displayName ?assignee .
+}
+GROUP BY ?assignee
+ORDER BY DESC(?points)
+
+---
+
+PREFIX pm: <https://w3id.org/pmkg/ontology#>
+
+# 4. Issues blocked by something, and what blocks them
+SELECT ?blockedKey ?blockerKey WHERE {
+  ?blocked pm:isBlockedBy ?blocker ;
+           pm:issueKey ?blockedKey .
+  ?blocker pm:issueKey ?blockerKey .
+}
+
+---
+
+PREFIX pm: <https://w3id.org/pmkg/ontology#>
+
+# 5. All issues under the "Card payments checkout" epic (PAY-1)
+SELECT ?key ?summary ?statusName WHERE {
+  ?epic pm:issueKey "PAY-1" .
+  ?issue pm:epicLink ?epic ;
+         pm:issueKey ?key ;
+         pm:summary ?summary ;
+         pm:hasStatus ?s .
+  ?s pm:name ?statusName .
+}
+ORDER BY ?key
